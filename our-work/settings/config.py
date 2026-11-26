@@ -63,8 +63,7 @@ class Config:
     ver_rivales: bool = True                # E6: ve o no los tipos de los demás bancos
 
     # --- Reparto de la demanda de crédito entre bancos ---
-    temperatura_softmax: float = 0.01       # más baja = el más barato se lo lleva casi todo (a ojo, por ajustar)
-
+    temperatura_softmax: float = 0.015      # calibrada con Optuna (experiments/calibrar_temperatura.py, 1000 hogares, 40 trials)
     # --- Recompensa ---
     lam_quiebra: float = 2.0                # penalización por quebrar, en unidades de capital inicial (E4)
     recompensa: str = "capital"             # "capital": cambio del capital / capital inicial (con signo)
