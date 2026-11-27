@@ -1,0 +1,14 @@
+# Cola de experimentos. Una línea = un experimento. Las líneas con # se ignoran.
+# Lanzar desde our-work/:  python -m experiments.cola
+
+# Fase 1: IPPO vs MAPPO, 3 semillas cada uno (la semilla 1 de IPPO ya está hecha)
+experiments.e2_ippo --algo mappo --pasos 100000 --entornos 8 --semilla 1
+experiments.e2_ippo --algo ippo  --pasos 100000 --entornos 8 --semilla 2
+experiments.e2_ippo --algo mappo --pasos 100000 --entornos 8 --semilla 2
+experiments.e2_ippo --algo ippo  --pasos 100000 --entornos 8 --semilla 3
+experiments.e2_ippo --algo mappo --pasos 100000 --entornos 8 --semilla 3
+
+# Cara a cara MAPPO contra IPPO (misma semilla, con intercambio de posiciones)
+experiments.e2_ippo --algo mappo --solo-evaluar results/e2/mappo_n2_h100_p100k_correcto_s1 --contra results/e2/ippo_n2_h100_p100k_correcto_s1
+experiments.e2_ippo --algo mappo --solo-evaluar results/e2/mappo_n2_h100_p100k_correcto_s2 --contra results/e2/ippo_n2_h100_p100k_correcto_s2
+experiments.e2_ippo --algo mappo --solo-evaluar results/e2/mappo_n2_h100_p100k_correcto_s3 --contra results/e2/ippo_n2_h100_p100k_correcto_s3
