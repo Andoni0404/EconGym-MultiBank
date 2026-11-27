@@ -15,9 +15,11 @@ our-work/
 │   ├── core/            las 5 partes de la economía, heredando del original
 │   ├── econgym.py       el puente que carga la economía del original
 │   └── visual.py        graba una simulación y genera el visor (visor.html)
-├── agents/              algoritmos de RL reutilizables (IPPO, MAPPO, PPO-Lagrangiano)
+├── algoritmos/          algoritmos de RL reutilizables (IPPO; luego MAPPO y PPO-Lagrangiano). No se llama
+│                        `agents/` porque chocaría con la carpeta `agents/` del EconGym original
 ├── experiments/         un script por experimento del plan
 │   ├── e1_banco_unico.py      E1: PPO / SAC con 1 banco frente a las reglas
+│   ├── e2_ippo.py             E2: N bancos con IPPO; evaluación con intercambio de posiciones
 │   ├── cola.py + cola.txt     cola de experimentos para dejarlos corriendo (p. ej. por la noche)
 │   └── comprobaciones/        calibrar_temperatura.py (Optuna) y comprobar_multibanco.py
 ├── analysis/            tablas y gráficas para el informe a partir de los CSV
