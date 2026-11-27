@@ -41,3 +41,8 @@ AGENTS.md
 
 MultiBank-propuesta.pdf
 *pdf
+# Resultados: modelos, TensorBoard y logs no se suben (solo los CSV finales)
+our-work/results/*/*/
+our-work/results/*/tb/
+our-work/results/logs/
+our-work/results/cola_hecho.txt

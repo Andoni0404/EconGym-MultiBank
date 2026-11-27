@@ -3,18 +3,27 @@
 Aquí va todo lo que hemos hecho nosotros (código, experimentos, resultados, informe).
 El código original de EconGym está en `../EconGym-original/` y no se toca.
 
-## Qué hay
+## Estructura
 
-| Archivo | Qué es |
-|---|---|
-| `settings/config.py` | Todos los parámetros (`Config()` = experimentos, `Config.pruebas()` = economía pequeña para probar) |
-| `multibank/env.py` | El entorno de RL: `MultiBankEnv` (N bancos) y `BancoUnicoEnv` (1 banco, API de Gymnasium para SB3) |
-| `multibank/banking.py` | Los N bancos: préstamos, intereses, impagos, lista de morosos, capital mínimo y quiebra |
-| `multibank/reglas.py` | Reglas fijas para comparar con el RL: prudente, agresiva, clásica y competitiva |
-| `multibank/core/` | Las 5 partes de la economía, heredando del original |
-| `multibank/econgym.py` | El puente que carga la economía del original |
-| `multibank/visual.py` + `visor.html` | Graba una simulación y genera el visor |
-| `tests/` | Tests (`uv run pytest` desde la raíz) |
+```
+our-work/
+├── settings/            config.py: todos los parámetros (Config() = experimentos, Config.pruebas() = economía pequeña)
+├── multibank/           el entorno
+│   ├── env.py           MultiBankEnv (N bancos) y BancoUnicoEnv (1 banco, API de Gymnasium para SB3)
+│   ├── banking.py       los N bancos: préstamos, intereses, impagos, morosos, capital mínimo y quiebra
+│   ├── reglas.py        reglas fijas para comparar con el RL: prudente, agresiva, clásica y competitiva
+│   ├── core/            las 5 partes de la economía, heredando del original
+│   ├── econgym.py       el puente que carga la economía del original
+│   └── visual.py        graba una simulación y genera el visor (visor.html)
+├── agents/              algoritmos de RL reutilizables (IPPO, MAPPO, PPO-Lagrangiano)
+├── experiments/         un script por experimento del plan
+│   ├── e1_banco_unico.py      E1: PPO / SAC con 1 banco frente a las reglas
+│   ├── cola.py + cola.txt     cola de experimentos para dejarlos corriendo (p. ej. por la noche)
+│   └── comprobaciones/        calibrar_temperatura.py (Optuna) y comprobar_multibanco.py
+├── analysis/            tablas y gráficas para el informe a partir de los CSV
+├── results/             salidas (solo se suben los CSV finales; modelos, logs y TensorBoard no)
+└── tests/               tests (`pytest` desde la raíz)
+```
 
 ## Cómo se usa
 
@@ -27,6 +36,14 @@ uv run python -m multibank.visual --politicas agresiva,clasica,prudente --hogare
 
 # Tests (desde la raíz del repo)
 uv run pytest
+
+# Comprobaciones del entorno
+python -m experiments.comprobaciones.comprobar_multibanco
+python -m experiments.comprobaciones.calibrar_temperatura --trials 40 --hogares 1000
+
+# Experimentos
+python -m experiments.e1_banco_unico --pasos 100000 --entornos 8
+python -m experiments.cola          # lanza en orden lo que haya en experiments/cola.txt
 ```
 
 En código:

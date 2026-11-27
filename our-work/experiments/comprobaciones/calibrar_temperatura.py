@@ -24,9 +24,9 @@ Las dos referencias (0,35 y 5 puntos) son SUPUESTOS DE MODELADO: se pueden cambi
 línea de comandos y hay que justificarlos en el informe.
 
 Uso (desde our-work/):
-    python -m experiments.calibrar_temperatura                    # 40 trials, 3 semillas
-    python -m experiments.calibrar_temperatura --trials 60 --hogares 1000
-    python -m experiments.calibrar_temperatura --cuota-objetivo 0.4
+    python -m experiments.comprobaciones.calibrar_temperatura                    # 40 trials, 3 semillas
+    python -m experiments.comprobaciones.calibrar_temperatura --trials 60 --hogares 1000
+    python -m experiments.comprobaciones.calibrar_temperatura --cuota-objetivo 0.4
 
 Salida: results/calibracion_temperatura.csv (todos los trials) y el mejor valor por pantalla.
 """
@@ -46,7 +46,7 @@ from settings.config import Config
 warnings.filterwarnings("ignore")
 
 AQUI = Path(__file__).resolve().parent
-SALIDA = AQUI.parent / "results" / "calibracion_temperatura.csv"
+SALIDA = AQUI.parents[1] / "results" / "calibracion_temperatura.csv"
 
 # Regla fija de referencia para el escenario asimétrico (como "clasica" pero sin reaccionar a pérdidas)
 MARGEN_BASE = 0.03
