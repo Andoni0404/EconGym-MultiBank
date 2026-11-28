@@ -1,5 +1,5 @@
 # Cola de experimentos. Una línea = un experimento. Las líneas con # se ignoran.
-# Lanzar desde our-work/:  python -m experiments.cola
+# Lanzar desde our-work/:  python -m herramientas.cola
 
 # Fase 1: IPPO vs MAPPO, 3 semillas cada uno (la semilla 1 de IPPO ya está hecha)
 experiments.e2_ippo --algo mappo --pasos 100000 --entornos 8 --semilla 1

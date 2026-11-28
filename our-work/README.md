@@ -15,16 +15,18 @@ our-work/
 │   ├── core/            las 5 partes de la economía, heredando del original
 │   ├── econgym.py       el puente que carga la economía del original
 │   └── visual.py        graba una simulación y genera el visor (visor.html)
-├── algoritmos/          algoritmos de RL reutilizables (IPPO; luego MAPPO y PPO-Lagrangiano). No se llama
-│                        `agents/` porque chocaría con la carpeta `agents/` del EconGym original
-├── experiments/         un script por experimento del plan
-│   ├── e1_banco_unico.py      E1: PPO / SAC con 1 banco frente a las reglas
-│   ├── e2_ippo.py             E2: N bancos con IPPO; evaluación con intercambio de posiciones
-│   ├── cola.py + cola.txt     cola de experimentos para dejarlos corriendo (p. ej. por la noche)
-│   └── comprobaciones/        calibrar_temperatura.py (Optuna) y comprobar_multibanco.py
-├── analysis/            tablas y gráficas para el informe a partir de los CSV
-├── results/             salidas (solo se suben los CSV finales; modelos, logs y TensorBoard no)
-└── tests/               tests (`pytest` desde la raíz)
+├── algoritmos/          el "cerebro" de los bancos: IPPO (cada banco aprende solo) y MAPPO (aprende viendo
+│                        también a los rivales). No se llama `agents/` para no chocar con la del original
+├── experiments/         SOLO los experimentos del plan, uno por archivo
+│   ├── e1_banco_unico.py      E1: 1 banco con PPO / SAC frente a las reglas fijas
+│   └── e2_ippo.py             E2: N bancos con IPPO o MAPPO, compitiendo
+├── herramientas/        lo que ayuda pero no es un experimento
+│   ├── cola.py + cola.txt     lanzar experimentos uno detrás de otro (p. ej. por la noche)
+│   └── calibrar_temperatura.py  ajusta temperatura_softmax con Optuna
+├── results/             resultados (solo se suben los CSV finales; modelos, logs y TensorBoard no)
+├── analysis/            (vacía) tablas y gráficas para el informe
+├── memory/              diario de decisiones (qué decidimos, cuándo y por qué)
+└── tests/               pruebas: `pytest` desde la raíz, y comprobar_multibanco.py (más larga, se lanza a mano)
 ```
 
 ## Cómo se usa
@@ -40,12 +42,12 @@ uv run python -m multibank.visual --politicas agresiva,clasica,prudente --hogare
 uv run pytest
 
 # Comprobaciones del entorno
-python -m experiments.comprobaciones.comprobar_multibanco
-python -m experiments.comprobaciones.calibrar_temperatura --trials 40 --hogares 1000
+python -m tests.comprobar_multibanco
+python -m herramientas.calibrar_temperatura --trials 40 --hogares 1000
 
 # Experimentos
 python -m experiments.e1_banco_unico --pasos 100000 --entornos 8
-python -m experiments.cola          # lanza en orden lo que haya en experiments/cola.txt
+python -m herramientas.cola         # lanza en orden lo que haya en herramientas/cola.txt
 ```
 
 En código:

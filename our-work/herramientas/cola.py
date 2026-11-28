@@ -1,6 +1,6 @@
 """Cola de experimentos: lanza uno detrás de otro, sin que haya que estar delante.
 
-Cada línea de `experiments/cola.txt` es un experimento (los argumentos de `python -m ...`).
+Cada línea de `herramientas/cola.txt` es un experimento (los argumentos de `python -m ...`).
 Las líneas vacías y las que empiezan por # se ignoran. Ejemplo de cola.txt:
 
     # E1: PPO con 3 semillas y SAC
@@ -16,9 +16,9 @@ Qué hace:
       un apagado), se salta las que ya terminaron bien.
 
 Uso (desde our-work/, con el .venv activado):
-    python -m experiments.cola                  # usa experiments/cola.txt
-    python -m experiments.cola mi_cola.txt      # otra lista
-    python -m experiments.cola --rehacer        # ignora lo ya hecho y lo repite todo
+    python -m herramientas.cola                  # usa herramientas/cola.txt
+    python -m herramientas.cola mi_cola.txt      # otra lista
+    python -m herramientas.cola --rehacer        # ignora lo ya hecho y lo repite todo
 """
 
 import subprocess
