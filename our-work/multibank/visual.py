@@ -5,12 +5,26 @@ Uso (desde our-work):
     uv run python -m multibank.visual --politicas agresiva,clasica,prudente --hogares 1000 --abrir
     uv run python -m multibank.visual --politicas azar,azar --semilla 3
 
-Cada banco juega con una política: una de las reglas (prudente, agresiva, clasica, competitiva)
-o "azar". Cuando haya modelos entrenados, se podrán pasar aquí también.
+Cada banco juega con una política, separadas por comas:
+    - una regla: prudente, agresiva, clasica, competitiva
+    - azar
+    - un banco ENTRENADO: la carpeta donde se guardó
+        results/e1/ppo_h100_s1                 nivel 1 (SB3): ocupa 1 banco
+        results/e2/ippo_n2_h100_p100k_..._s1   niveles 2 y 3 (IPPO/MAPPO): ocupa TODOS sus bancos
+        results/e2/ippo_n2_..._s1#0            solo la red del banco 0 (para ponerla contra reglas)
+
+    uv run python -m multibank.visual --politicas results/e1/ppo_h100_s1,prudente --abrir
+    uv run python -m multibank.visual --politicas results/e2/mappo_n2_h100_p100k_correcto_s1 --abrir
+
+Ver cómo aprende (--fotos): si el primer banco entrenado guardó fotos durante el entrenamiento
+(carpeta fotos/), se graba la misma economía con cada foto y el visor deja elegir el momento:
+    uv run python -m multibank.visual --politicas results/e1/ppo_h100_s1,prudente --fotos --abrir
 """
 
 import argparse
 import json
+import pickle
+import re
 import webbrowser
 from pathlib import Path
 
@@ -21,6 +35,8 @@ from multibank.reglas import REGLAS
 from settings.config import Config
 
 AQUI = Path(__file__).resolve().parent
+RAIZ = AQUI.parent                                   # our-work/
+EMPRESAS_MIN = 25                                    # igual que en los experimentos
 SALIDA = AQUI.parent / "viz" / "simulacion.html"
 PLANTILLA = AQUI / "visor.html"
 
@@ -71,16 +87,99 @@ def foto(env, info, recompensas):
     }
 
 
-def politica(nombre, env, rng):
-    if nombre == "azar":
-        return lambda obs: rng.uniform(-1, 1, N_ACCIONES)
-    return REGLAS[nombre](env)
+# ---------------------------------------------------------------------------- bancos entrenados
+def es_modelo(nombre):
+    return nombre.split("#")[0] not in REGLAS and nombre != "azar"
 
 
-def grabar(cfg, nombres, semilla):
-    env = MultiBankEnv(cfg)
+def ruta(nombre):
+    p = Path(nombre.split("#")[0])
+    return p if p.is_absolute() or p.exists() else RAIZ / p
+
+
+def cargar_sb3(archivo, normalizador):
+    """Banco de nivel 1 (PPO o SAC de SB3) -> función obs -> acción."""
+    from stable_baselines3 import PPO, SAC
+    algo = SAC if "sac" in archivo.parent.name.lower() or "sac" in archivo.parents[1].name.lower() else PPO
+    modelo = algo.load(archivo)
+    vecnorm = None
+    if normalizador.exists():
+        with open(normalizador, "rb") as f:
+            vecnorm = pickle.load(f)                 # solo hacen falta sus medias, no su entorno
+
+    def f(obs):
+        o = obs[None, :]
+        if vecnorm is not None:
+            o = np.clip((o - vecnorm.obs_rms.mean) / np.sqrt(vecnorm.obs_rms.var + vecnorm.epsilon),
+                        -vecnorm.clip_obs, vecnorm.clip_obs).astype(np.float32)
+        return modelo.predict(o, deterministic=True)[0][0]
+    return f
+
+
+def cargar_ippo(archivo):
+    """IPPO / MAPPO -> lista de funciones obs -> acción, una por red (banco)."""
+    from algoritmos.ippo import IPPO
+    m = IPPO.cargar(archivo)
+    return [(lambda k: (lambda obs: m.actuar(obs[None, None], determinista=True, banco=k)[0][0, 0]))(k)
+            for k in range(m.N)], type(m).__name__
+
+
+def fotos_de(carpeta):
+    """Las fotos guardadas durante el entrenamiento + el modelo final: [(etiqueta, archivo, normalizador)]."""
+    carpeta = ruta(str(carpeta))
+    salida = []
+    if (carpeta / "fotos").is_dir():
+        archivos = sorted((carpeta / "fotos").glob("paso_*"), key=lambda a: int(re.findall(r"\d+", a.stem)[0]))
+        for a in archivos:
+            n = int(re.findall(r"\d+", a.stem)[0])
+            salida.append((f"tras {n:,} pasos".replace(",", "."), a, carpeta / "fotos" / f"vecnormalize_{n}.pkl"))
+    final = carpeta / "modelo.zip" if (carpeta / "modelo.zip").exists() else carpeta / "modelo.pt"
+    salida.append(("final", final, carpeta / "vecnormalize.pkl"))
+    return salida
+
+
+def politicas_de(nombre, foto=None):
+    """Una entrada de --politicas que es un modelo -> [(etiqueta, función)] (uno o varios bancos)."""
+    carpeta = ruta(nombre)
+    _, archivo, norm = foto or fotos_de(carpeta)[-1]
+    if archivo.suffix == ".zip":
+        return [(f"{carpeta.name} (RL)", cargar_sb3(archivo, norm))]
+    redes, tipo = cargar_ippo(archivo)
+    if "#" in nombre:
+        k = int(nombre.split("#")[1])
+        return [(f"{tipo} banco {k} ({carpeta.name})", redes[k])]
+    return [(f"{tipo} banco {k} ({carpeta.name})", r) for k, r in enumerate(redes)]
+
+
+def montar(nombres, semilla, foto=None):
+    """--politicas -> (etiquetas, fábricas). Una fábrica recibe el entorno y devuelve obs -> acción."""
     rng = np.random.default_rng(semilla)
-    politicas = [politica(n, env, rng) for n in nombres]
+    etiquetas, fabricas, primero = [], [], True
+    for n in nombres:
+        if n == "azar":
+            etiquetas.append("azar")
+            fabricas.append(lambda env: (lambda obs: rng.uniform(-1, 1, N_ACCIONES)))
+        elif not es_modelo(n):
+            etiquetas.append(n)
+            fabricas.append((lambda r: (lambda env: REGLAS[r](env)))(n))
+        else:
+            for etq, f in politicas_de(n, foto if primero else None):
+                etiquetas.append(etq)
+                fabricas.append((lambda g: (lambda env: g))(f))
+            primero = False
+    return etiquetas, fabricas
+
+
+def config(hogares, n_bancos):
+    return Config(n_hogares=hogares, n_empresas=max(hogares // 20, EMPRESAS_MIN), n_bancos=n_bancos)
+
+
+# ---------------------------------------------------------------------------- grabar
+def grabar(cfg, nombres, semilla, fabricas=None, env=None):
+    env = env or MultiBankEnv(cfg)
+    if fabricas is None:
+        nombres, fabricas = montar(nombres, semilla)
+    politicas = [f(env) for f in fabricas]
     obs, _ = env.reset(seed=semilla)
     historia, motivo = [], "se completó el episodio"
     while True:
@@ -102,21 +201,41 @@ def grabar(cfg, nombres, semilla):
 
 
 def main():
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--politicas", default="agresiva,clasica,prudente",
-                   help="una por banco: " + ", ".join(list(REGLAS) + ["azar"]))
-    p.add_argument("--hogares", type=int, default=100, help="100 (5 empresas) o 1000 (50 empresas)")
+                   help="una por banco: " + ", ".join(list(REGLAS) + ["azar"]) + " o la carpeta de un banco entrenado")
+    p.add_argument("--hogares", type=int, default=100, help="100 o 1000 (empresas: hogares/20, mínimo 25, como en los experimentos)")
     p.add_argument("--semilla", type=int, default=1)
+    p.add_argument("--fotos", action="store_true", help="grabar una simulación por cada foto del entrenamiento")
     p.add_argument("--abrir", action="store_true", help="abrir el visor en el navegador al acabar")
     args = p.parse_args()
 
     nombres = [n.strip() for n in args.politicas.split(",")]
-    cfg = Config(n_bancos=len(nombres)) if args.hogares >= 1000 else Config.pruebas(n_bancos=len(nombres))
-    datos = grabar(cfg, nombres, args.semilla)
+    etiquetas, _ = montar(nombres, args.semilla)
+    cfg = config(args.hogares, len(etiquetas))
+    env = MultiBankEnv(cfg)
+
+    modelos = [n for n in nombres if es_modelo(n)]
+    if args.fotos and modelos:
+        grabaciones = []
+        for foto in fotos_de(modelos[0]):
+            etq, fabricas = montar(nombres, args.semilla, foto)
+            g = grabar(cfg, etq, args.semilla, fabricas, env)    # misma economía y semilla en todas
+            g["etiqueta"] = foto[0]
+            grabaciones.append(g)
+            print(f"  {foto[0]:>18}: {len(g['historia'])} años, capital final "
+                  + ", ".join(f"{b['capital'] / b['capital0']:.1f}x" for b in g["historia"][-1]["bancos"]))
+        datos = {"grabaciones": grabaciones}
+        resumen = f"{len(grabaciones)} momentos del entrenamiento"
+    else:
+        etq, fabricas = montar(nombres, args.semilla)
+        datos = grabar(cfg, etq, args.semilla, fabricas, env)
+        resumen = f"{len(datos['historia'])} años grabados ({datos['fin']})"
+
     html = PLANTILLA.read_text(encoding="utf-8").replace("__DATOS__", json.dumps(datos, separators=(",", ":")))
     SALIDA.parent.mkdir(exist_ok=True)
     SALIDA.write_text(html, encoding="utf-8")
-    print(f"{len(datos['historia'])} años grabados ({datos['fin']}) -> {SALIDA}")
+    print(f"{resumen} -> {SALIDA}")
     if args.abrir:
         webbrowser.open(SALIDA.as_uri())
 
