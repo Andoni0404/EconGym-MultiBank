@@ -11,6 +11,39 @@ Lo más nuevo, arriba.
   fuerte si quiebra. Falta confirmarlo. Cuánto debe doler la quiebra no lo decidimos a ojo:
   es justo lo que estudia el experimento E4.
 - **Idioma** del repo y del informe: inglés si lo queremos enseñar fuera de clase.
+- **Subir los modelos entrenados** que van al informe a GitHub, para que los tengamos los dos
+  (ocupan poco). Ahora solo los tiene quien los entrena.
+- **La fecha exacta de entrega** en enero, para ajustar el calendario.
+
+---
+
+### 28 de noviembre: qué vamos a hacer (falta que lo vea el compañero)
+
+Antes de seguir programando paramos a definir el trabajo, porque si no, no sabíamos qué había que
+hacer. Lo más importante: **es un trabajo de RL**. La economía es el escenario, como los juegos de
+Atari en los artículos de RL, y solo la usamos para explicar los resultados.
+
+Quedan **cuatro preguntas de RL**: si el banco aprende (y si aprende antes con **curriculum
+learning**), cómo aprende cuando hay un desastre raro como la quiebra (tratarla bien o mal,
+castigarla o limitarla con PPO-Lagrangiano), qué pasa cuando aprenden varios a la vez (IPPO frente
+a MAPPO y si acaban poniéndose de acuerdo) y si lo aprendido le sirve fuera de donde se entrenó
+(con **domain randomization**).
+
+Cada pregunta se hace en **tres niveles**: un banco solo, cinco bancos iguales y cinco bancos
+distintos (dos grandes, dos medianos y un neobanco). Cinco y no dos porque un mercado de dos no se
+parece a nada real; en España cinco bancos se reparten cerca del 70%.
+
+Descartamos comparar algoritmos uno contra uno: que gane uno puede ser casualidad (la semilla, la
+inicialización…) y no aporta nada. Los algoritmos se comparan por lo estable que aprenden, con 5
+semillas y mirando cuánto varía.
+
+La economía de partida es la de **1000 hogares**. Entrenar con un millón no es posible (12 segundos
+por paso), pero sí probar ahí un banco ya entrenado; lo haremos con 10.000.
+
+También decidimos que no basta con saber cuánto gana el banco: hay que **ver qué ha aprendido**.
+Por eso el visor carga bancos entrenados y enseña fotos del banco durante el entrenamiento.
+
+Todo el detalle y el calendario hasta enero está en `experiments/guia.md`.
 
 ---
 

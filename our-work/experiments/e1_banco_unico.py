@@ -14,6 +14,8 @@ Uso (desde our-work/):
 
 Salida:
     results/e1/<algo>_h<hogares>_s<semilla>/   modelo.zip + vecnormalize.pkl
+                                               fotos/: el banco al 0, 25, 50 y 75% del entrenamiento
+                                               (para verlo aprender en el visor: python -m multibank.visual --fotos)
     results/e1/tb/                             TensorBoard:  tensorboard --logdir results/e1/tb
     results/e1/evaluacion.csv                  una fila por (política, semilla de evaluación)
 """
@@ -29,6 +31,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 from stable_baselines3 import PPO, SAC
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
@@ -106,6 +109,34 @@ def evaluar(hogares, politicas):
 
 
 # ---------------------------------------------------------------------------- entrenamiento
+FOTOS = (0.0, 0.25, 0.5, 0.75)        # momentos del entrenamiento en que se guarda el banco (el final aparte)
+
+
+class GuardarFotos(BaseCallback):
+    """Guarda el banco (y su normalización) en fotos/ al 0, 25, 50 y 75% del entrenamiento."""
+
+    def __init__(self, carpeta, pasos_totales):
+        super().__init__()
+        self.carpeta = Path(carpeta) / "fotos"
+        self.pendientes = [int(f * pasos_totales) for f in FOTOS]
+
+    def _guardar(self):
+        self.carpeta.mkdir(parents=True, exist_ok=True)
+        n = self.num_timesteps
+        self.model.save(self.carpeta / f"paso_{n}")
+        self.model.get_vec_normalize_env().save(str(self.carpeta / f"vecnormalize_{n}.pkl"))
+
+    def _on_training_start(self):
+        self._guardar()
+        self.pendientes.pop(0)
+
+    def _on_step(self):
+        if self.pendientes and self.num_timesteps >= self.pendientes[0]:
+            self._guardar()
+            self.pendientes.pop(0)
+        return True
+
+
 def entrenar(a):
     nombre = f"{a.algo}_h{a.hogares}_s{a.semilla}"
     carpeta = RESULTADOS / nombre
@@ -125,7 +156,8 @@ def entrenar(a):
         modelo = SAC("MlpPolicy", venv, learning_rate=a.lr, batch_size=a.batch, learning_starts=1000, **comunes)
 
     t = time.time()
-    modelo.learn(total_timesteps=a.pasos, tb_log_name=nombre, progress_bar=True)
+    modelo.learn(total_timesteps=a.pasos, tb_log_name=nombre, progress_bar=True,
+                 callback=GuardarFotos(carpeta, a.pasos))
     print(f"\nEntrenado en {(time.time() - t) / 60:.1f} min")
 
     modelo.save(carpeta / "modelo")

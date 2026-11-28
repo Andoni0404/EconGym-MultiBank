@@ -26,6 +26,8 @@ Uso (desde our-work/):
 
 Salida:
     results/e2/<nombre>/modelo.pt            redes y normalización
+    results/e2/<nombre>/fotos/paso_<n>.pt    los bancos al 0, 25, 50 y 75% del entrenamiento
+                                             (para verlos aprender: python -m multibank.visual --fotos)
     results/e2/tb/<nombre>/                  TensorBoard
     results/e2/evaluacion.csv                una fila por (escenario, semilla, posición, banco)
 """
@@ -55,6 +57,7 @@ SEMILLAS_EVAL = list(range(3001, 3011))      # 10 economías de evaluación
 REGLAS_EVAL = ["prudente", "clasica", "agresiva", "competitiva", "accion_media"]
 REGLAS = {**REGLAS, "accion_media": lambda env: (lambda obs: np.zeros(N_ACCIONES, np.float32))}
 EMPRESAS_MIN = 25
+FOTOS = (0.0, 0.25, 0.5, 0.75)               # momentos del entrenamiento en que se guardan los bancos
 
 
 def config(a):
@@ -86,8 +89,13 @@ def entrenar(a):
     episodios = []                     # (retorno por banco, quiebras por banco, margen medio)
     margenes_ep = [[] for _ in range(E)]
     pasos, it, t0 = 0, 0, time.time()
+    (carpeta / "fotos").mkdir(exist_ok=True)
+    fotos_pendientes = [int(f * a.pasos) for f in FOTOS]
 
     while pasos < a.pasos:
+        if fotos_pendientes and pasos >= fotos_pendientes[0]:
+            ippo.guardar(carpeta / "fotos" / f"paso_{pasos}.pt")
+            fotos_pendientes.pop(0)
         lote = {k: [] for k in ("obs", "accion", "logp", "valor", "recompensa", "terminado",
                                 "fin_episodio", "vivo", "valor_final")}
         for _ in range(T):

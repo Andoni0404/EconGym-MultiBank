@@ -3,13 +3,18 @@
 Cada línea de `herramientas/cola.txt` es un experimento (los argumentos de `python -m ...`).
 Las líneas vacías y las que empiezan por # se ignoran. Ejemplo de cola.txt:
 
-    # E1: PPO con 3 semillas y SAC
-    experiments.e1_banco_unico --pasos 300000 --entornos 8 --semilla 2
-    experiments.e1_banco_unico --pasos 300000 --entornos 8 --semilla 3
-    experiments.e1_banco_unico --algo sac --pasos 100000 --entornos 8 --semilla 1
+    # Nivel 1: PPO y SAC, 5 semillas cada uno
+    experiments.e1_banco_unico --algo ppo --pasos 300000 --entornos 8 --semillas 1-5
+    experiments.e1_banco_unico --algo sac --pasos 100000 --entornos 8 --semillas 1-5
+
+Semillas:
+    `--semillas 1-5` (o `--semillas 1,2,3`) convierte la línea en una por semilla, con `--semilla 1`,
+    `--semilla 2`... Se lanzan POR RONDAS: primero la semilla 1 de todas las líneas, luego la 2, etc.
+    Así, si una noche se corta a medias, al menos hay una semilla de cada cosa.
+    Las líneas con `--semilla N` (una sola) se lanzan tal cual, en la primera ronda.
 
 Qué hace:
-    - Ejecuta las líneas en orden, una cada vez.
+    - Ejecuta los experimentos uno a uno, en el orden de arriba.
     - Guarda la salida de cada una en results/logs/<n>_<fecha>.log (la consola solo muestra el progreso).
     - Si una falla, lo apunta y sigue con la siguiente: un error no tira la noche entera.
     - Apunta las terminadas en results/cola_hecho.txt. Si se relanza la cola (por ejemplo tras
@@ -33,13 +38,33 @@ LOGS = RAIZ / "results" / "logs"
 HECHO = RAIZ / "results" / "cola_hecho.txt"
 
 
+def leer_semillas(texto):
+    """'1-5' -> [1, 2, 3, 4, 5];  '1,3,7' -> [1, 3, 7]."""
+    if "-" in texto:
+        a, b = texto.split("-")
+        return list(range(int(a), int(b) + 1))
+    return [int(x) for x in texto.split(",")]
+
+
+def expandir(linea):
+    """Una línea con --semillas X -> una línea por semilla (con --semilla k)."""
+    partes = linea.split()
+    if "--semillas" not in partes:
+        return [linea]
+    i = partes.index("--semillas")
+    resto = partes[:i] + partes[i + 2:]
+    return [" ".join(resto + ["--semilla", str(k)]) for k in leer_semillas(partes[i + 1])]
+
+
 def leer_cola(ruta):
-    lineas = []
+    grupos = []
     for linea in Path(ruta).read_text(encoding="utf-8").splitlines():
         linea = linea.strip()
         if linea and not linea.startswith("#"):
-            lineas.append(linea)
-    return lineas
+            grupos.append(expandir(linea))
+    # Por rondas: la 1.ª semilla de cada línea, luego la 2.ª, etc.
+    rondas = max((len(g) for g in grupos), default=0)
+    return [g[k] for k in range(rondas) for g in grupos if k < len(g)]
 
 
 def main():

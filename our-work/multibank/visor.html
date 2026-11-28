@@ -27,6 +27,7 @@
   header { display: flex; align-items: baseline; gap: 20px; padding: 14px 24px 2px; flex-wrap: wrap; }
   header h1 { font: 600 26px/1 var(--cond); margin: 0; }
   header p { margin: 0; color: var(--tenue); font-size: 14px; }
+  header label { margin-left: auto; display: flex; align-items: baseline; gap: 8px; color: var(--tenue); font-size: 14px; }
 
   .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 8px 22px; padding: 0 24px; }
   #mapa { width: 100%; height: auto; display: block; }
@@ -76,6 +77,7 @@
 <header>
   <h1>Plano de la economía</h1>
   <p id="resumen"></p>
+  <label id="caja-foto" hidden>Momento del entrenamiento <select id="foto"></select></label>
 </header>
 
 <div class="cuerpo">
@@ -101,7 +103,12 @@
 <div id="tip"></div>
 
 <script>
-const D = __DATOS__;
+const TODO = __DATOS__;
+// Varias grabaciones (una por foto del entrenamiento) o una sola. Se elige con #foto=k&t=año
+const FOTOS = TODO.grabaciones || [TODO];
+const PARAM = new URLSearchParams(location.hash.slice(1));
+const K_FOTO = Math.min(FOTOS.length - 1, Math.max(0, +(PARAM.get("foto") ?? FOTOS.length - 1) || 0));
+const D = FOTOS[K_FOTO];
 const H = D.historia, N = H.length, NB = D.politicas.length, NF = D.n_empresas, NH = D.n_hogares;
 const COLORES = ["#f4c95d", "#7cc4ff", "#c9a7ff", "#ffa36c", "#9be37a"];
 const col = b => b < 0 ? "transparent" : COLORES[b % COLORES.length];
@@ -112,6 +119,11 @@ const dinero = v => { const a = Math.abs(v), s = v < 0 ? "−" : ""; const f = (
 const pct = v => (v * 100).toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
 const nombreBanco = b => `Banco ${b + 1}`;
 
+if (FOTOS.length > 1) {
+  $("caja-foto").hidden = false;
+  $("foto").innerHTML = FOTOS.map((f, k) => `<option value="${k}"${k === K_FOTO ? " selected" : ""}>${f.etiqueta}</option>`).join("");
+  $("foto").onchange = e => { location.hash = `foto=${e.target.value}&t=${t}`; location.reload(); };
+}
 $("resumen").textContent = `${NB} bancos · ${NF} empresas · ${NH} hogares · ${N} años · semilla ${D.semilla} · ${D.fin}`;
 $("leyenda").innerHTML = D.politicas.map((p, b) => `<span><i style="background:${col(b)}"></i>${nombreBanco(b)}: ${p}</span>`).join("")
   + `<span><i style="background:var(--coral)"></i>no paga este año</span><span><i style="border:1.5px solid var(--coral)"></i>en la lista de morosos</span>`;
@@ -338,7 +350,7 @@ addEventListener("keydown", e => {
   if (e.code === "ArrowLeft") { parar(); ir(t - 1); }
 });
 addEventListener("resize", () => { tiempo(); pintar(); });
-tiempo(); ir(0);
+tiempo(); ir(+(PARAM.get("t") ?? 0) || 0);
 </script>
 </body>
 </html>
