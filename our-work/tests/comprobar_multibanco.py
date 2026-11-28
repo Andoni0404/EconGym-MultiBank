@@ -11,8 +11,8 @@ Cinco comprobaciones; cada una imprime sus números y OK / REVISAR:
                             El efecto de la competencia se estudia con RL (E6).
 
 Uso (desde our-work/, con el .venv activado):
-    python -m experiments.comprobar_multibanco                 # 100 hogares, 25 empresas: unos minutos
-    python -m experiments.comprobar_multibanco --hogares 1000  # economía completa: más lento
+    python -m tests.comprobar_multibanco                 # 100 hogares, 25 empresas: unos minutos
+    python -m tests.comprobar_multibanco --hogares 1000  # economía completa: más lento
 """
 
 import argparse
